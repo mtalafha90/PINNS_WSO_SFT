@@ -1,0 +1,32 @@
+{
+  "title": "PINN-SFT: Physics-Informed Neural Network Solar Surface Flux Transport Code",
+  "description": "Physics-informed neural-network and source-informed surface flux transport framework for reconstructing, validating, and forecasting the large-scale solar surface magnetic-field evolution across Solar Cycles 21-25. Includes a corrected finite-volume reference solver, analog-ensemble hindcast/forecast pipeline, and WSO synoptic-map data processing utilities.",
+  "creators": [
+    {
+      "name": "Talafha, Mohammed H.",
+      "affiliation": "University of Sharjah"
+    }
+  ],
+  "keywords": [
+    "solar physics",
+    "surface flux transport",
+    "physics-informed neural networks",
+    "solar magnetic field",
+    "solar cycle prediction",
+    "Wilcox Solar Observatory",
+    "WSO",
+    "deep learning"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "version": "1.0.0",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "scheme": "url",
+      "identifier": "https://github.com/mtalafha90/PINNS_WSO_SFT",
+      "relation": "isSupplementTo"
+    }
+  ]
+}
