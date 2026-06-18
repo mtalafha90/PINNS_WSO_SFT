@@ -31,7 +31,7 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from src.extract import get_wso_map_for_comparison      # numpy/scipy only, no TF
 try:
-    from src import cycle_tools as ct                  # for the FD overlay
+    from src import cycle_tools as ct                   # for the FD overlay
     _HAVE_CT = True
 except Exception:
     _HAVE_CT = False

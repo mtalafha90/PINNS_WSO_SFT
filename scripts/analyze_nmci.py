@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # analyze_nmci.py
 # Read PINN outputs (field.npy) and compute NMCI components + diagnostics.
 # Works for one or multiple result directories (each containing field.npy).
@@ -41,7 +44,7 @@ def permutation_entropy(x, m=3, tau=1):
     return H / np.log(math.factorial(m))  # normalize to [0,1]
 
 def lz_entropy_rate_binary(x):
-    """Lempel–Ziv complexity (binary)."""
+    """Lempel-Ziv complexity (binary)."""
     x = np.asarray(x)
     if len(x) < 10:
         return np.nan
@@ -130,7 +133,7 @@ def build_lat_grid(lat_points):
     return lat_deg, lat_rad
 
 def dipole_moment_from_B(B, lat_rad):
-    """Proxy dipole: ∫ B(λ,t) sinλ cosλ dλ (trapezoid). B shape (T, L)."""
+    """Proxy dipole: integral B(lambda,t) sin(lambda) cos(lambda) dlambda (trapezoid). B shape (T, L)."""
     weight = np.sin(lat_rad)*np.cos(lat_rad)
     dm = _trapz(B*weight[None, :], lat_rad, axis=1)
     return dm
@@ -192,7 +195,7 @@ def compute_components_for_run(field_path, simul_time_years=11.0, lat_points=181
         D_cycle.append(float(np.nanmean(dip[i1-k+1:i1+1])))
     A_cycle = np.array(A_cycle); D_cycle = np.array(D_cycle)
 
-    # ---------- Amplitude–Response nonlinearity  (A) ----------
+    # ---------- Amplitude-Response nonlinearity  (A) ----------
     A_score_parts = []
 
     # curvature via spline
@@ -278,7 +281,7 @@ def compute_components_for_run(field_path, simul_time_years=11.0, lat_points=181
     rmse_ar5 = simple_ar_rmse(dip, p=5)
     Q = np.nan
     if np.isfinite(rmse_ar1) and np.isfinite(rmse_ar5) and rmse_ar5 > 1e-12:
-        Q = rmse_ar1 / rmse_ar5  # >1 ⇒ nonlinear/long-memory advantage
+        Q = rmse_ar1 / rmse_ar5  # >1 => nonlinear/long-memory advantage
     E_parts = [Hrate, Q]
 
     # Normalize components within this run (if you analyze multiple runs,
@@ -308,7 +311,7 @@ def compute_components_for_run(field_path, simul_time_years=11.0, lat_points=181
                 pass
             plt.xlabel("Cycle amplitude proxy A")
             plt.ylabel("Final dipole D")
-            plt.title("Amplitude → Dipole response")
+            plt.title("Amplitude -> Dipole response")
             plt.tight_layout()
             plt.savefig(os.path.join(save_dir, "D_vs_A.png"), dpi=150)
             plt.close()
