@@ -1,5 +1,7 @@
 # PINN--SFT Solar Surface Flux Transport Code
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20753423.svg)](https://doi.org/10.5281/zenodo.20753423)
+
 This repository contains the code used to reconstruct and forecast the large-scale evolution of the solar surface magnetic field using a physics-informed neural network (PINN) constrained by a source-informed surface flux transport (SFT) model. The framework is designed for cycle-by-cycle reconstruction of Solar Cycles 21--24, validation against WSO synoptic-map data and finite-volume reference solutions, and predictive extension to the ongoing Solar Cycle 25.
 
 The repository includes tools for
@@ -23,8 +25,8 @@ If you use this repository, please cite the software release:
   year         = {2026},
   version      = {v1.0.0},
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.XXXXXXX},
-  url          = {https://doi.org/10.5281/zenodo.XXXXXXX}
+  doi          = {10.5281/zenodo.20753423},
+  url          = {https://doi.org/10.5281/zenodo.20753423}
 }
 ```
 
@@ -41,6 +43,3 @@ You may also cite the accompanying manuscript:
 ```
 
 The repository citation metadata is also provided in the `CITATION.cff` file.
-
-```
-```
