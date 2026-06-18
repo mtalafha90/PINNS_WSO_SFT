@@ -27,6 +27,11 @@
       "scheme": "url",
       "identifier": "https://github.com/mtalafha90/PINNS_WSO_SFT",
       "relation": "isSupplementTo"
+    },
+    {
+      "scheme": "doi",
+      "identifier": "10.5281/zenodo.20753423",
+      "relation": "isIdenticalTo"
     }
   ]
 }
