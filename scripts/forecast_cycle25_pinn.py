@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 #!/usr/bin/env python3
 """
 forecast_cycle25_pinn.py
@@ -42,10 +45,10 @@ from src.config import Config
 from src.extract import (build_synoptic_map, _remove_monopole_per_time,
                          get_initial_profile_from_wso)
 from deepxde.icbc import PointSetBC
-import cycle_tools as ct
+from src import cycle_tools as ct
 
 # --------------------------------------------------------------------------
-HERE  = os.path.dirname(os.path.abspath(__file__))
+HERE  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT   = os.path.join(HERE, "cycle_products")
 store = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 

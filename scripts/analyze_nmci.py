@@ -8,6 +8,8 @@ from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
 from scipy.stats import skew, kurtosis
 
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 # ----------------------------
 # Utilities
 # ----------------------------
@@ -130,7 +132,7 @@ def build_lat_grid(lat_points):
 def dipole_moment_from_B(B, lat_rad):
     """Proxy dipole: ∫ B(λ,t) sinλ cosλ dλ (trapezoid). B shape (T, L)."""
     weight = np.sin(lat_rad)*np.cos(lat_rad)
-    dm = np.trapz(B*weight[None, :], lat_rad, axis=1)
+    dm = _trapz(B*weight[None, :], lat_rad, axis=1)
     return dm
 
 def polar_fields(B, lat_deg, pole_cut=55):

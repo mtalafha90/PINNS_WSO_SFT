@@ -160,12 +160,12 @@ def build_synoptic_map(data_dir="data/24", lat_points=360):
 
 
 def _remove_monopole_per_time(B_2D, lat_deg):
-	lat_rad = np.deg2rad(lat_deg)
-	w = np.cos(lat_rad)
-	w = np.clip(w,0.0,None)
-	w/=w.sum()
-	means = B_2D @ w[:,None]
-	return B_2D - means
+    lat_rad = np.deg2rad(lat_deg)
+    w = np.cos(lat_rad)
+    w = np.clip(w, 0.0, None)
+    w /= w.sum()
+    means = B_2D @ w[:, None]
+    return B_2D - means
 
 def _build_interp_from_arrays(t_vec, lat_deg, B_2D):
     T, L = np.meshgrid(t_vec, lat_deg, indexing="ij")

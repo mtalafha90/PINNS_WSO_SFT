@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 """
 build_all_cycles.py -- Stage 1: per-cycle source maps + reconstruction validation.
 
@@ -15,10 +18,10 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import cycle_tools as ct
+from src import cycle_tools as ct
 
-PROJ = "/media/talafha/Disk_1/HPC_Simulations/Data_based/Source_SC24_1"
-OUT = "/media/talafha/Disk_1/HPC_Simulations/Data_based/Source_SC24_1/cycle_products"
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(HERE, "cycle_products")
 os.makedirs(OUT, exist_ok=True)
 
 cycles = [21, 22, 23, 24, 25]
@@ -31,11 +34,11 @@ print(f"{'cyc':>4} {'T[yr]':>6} {'rotN':>5} | {'rev N obs':>9} {'rev N mod':>9} 
       f"{'endN obs':>8} {'endN mod':>8} | {'endS obs':>8} {'endS mod':>8} | {'RMS':>5}")
 
 for r, c in enumerate(cycles):
-    t_obs, obs, T = ct.load_cycle(PROJ, c)
+    t_obs, obs, T = ct.load_cycle(c)
     t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T)
     S = ct.refit_source(t_u, obs_s)
-    ct.save_source_for_pinn(S, f"{OUT}/fitted_source_map_cycle{c}.npy")
-    np.save(f"{OUT}/source_mu_cycle{c}.npy", S)
+    ct.save_source_for_pinn(S, os.path.join(HERE, "data", f"fitted_source_map_cycle{c}.npy"))
+    np.save(os.path.join(OUT, f"source_mu_cycle{c}.npy"), S)
     lengths[str(c)] = round(T, 3)
 
     t_m, B = ct.forward(obs_s[0], 0.0, T, S, t_u)
@@ -75,12 +78,12 @@ for r, c in enumerate(cycles):
 axes[-1, 0].set_xlabel("years since cycle start")
 axes[-1, 1].set_xlabel("years since cycle start")
 plt.tight_layout()
-plt.savefig(f"{OUT}/reconstruction_cycles.png", dpi=130)
+plt.savefig(os.path.join(OUT, "reconstruction_cycles.png"), dpi=130)
 
-with open(f"{OUT}/cycle_lengths.json", "w") as f:
+with open(os.path.join(OUT, "cycle_lengths.json"), "w") as f:
     json.dump(lengths, f, indent=2)
-np.savez(f"{OUT}/store_meta.npz", cycles=cycles)
+np.savez(os.path.join(OUT, "store_meta.npz"), cycles=cycles)
 import pickle
-with open(f"{OUT}/store.pkl", "wb") as f:
+with open(os.path.join(OUT, "store.pkl"), "wb") as f:
     pickle.dump(store, f)
 print("\nSaved per-cycle sources, lengths, and reconstruction figure to", OUT)

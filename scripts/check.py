@@ -1,5 +1,8 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np, pickle, matplotlib.pyplot as plt
-import cycle_tools as ct
+from src import cycle_tools as ct
 
 B = np.load("results/cycle_21/field.npy") * 10.0          # native units, (401, 181)
 T = 10.31
