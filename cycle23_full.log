@@ -1,0 +1,105 @@
+nohup: ignoring input
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1781281843.292203  602809 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1781281843.292783  602809 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+I0000 00:00:1781281843.326054  602809 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1781281844.103067  602809 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1781281844.103409  602809 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+Using backend: tensorflow
+Other supported backends: tensorflow.compat.v1, pytorch, jax, paddle.
+paddle supports more examples now and is recommended.
+E0000 00:00:1781281845.463819  602809 cuda_executor.cc:1737] INTERNAL: CUDA Runtime error: Failed call to cudaGetRuntimeVersion: Error loading CUDA libraries. GPU will not be used.: Error loading CUDA libraries. GPU will not be used.
+W0000 00:00:1781281845.487147  602809 gpu_device.cc:2365] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+
+===== CYCLE 23 =====
+1996-08-22 00:00:00
+[INFO] Non-dimensional params: eta_nd=0.2817, u0_nd=6.1535, tau_nd=0.6494
+[INFO] Loaded fitted source (TF-native) from: data/fitted_source_map_cycle23.npy
+[INFO] Source scale (incl. units): 1.232
+[INFO] Pole mask above deg: 80.0
+1996-08-22 00:00:00
+[get_wso_constraints] data/23 → Nt=166 (used 400), Nlat=181, total points=60400
+Warning: 5000 points required, but 5041 points sampled.
+Compiling model...
+'compile' took 0.011699 s
+
+Training model...
+
+Step      Train loss                                  Test loss                                   Test metric
+0         [1.32e+04, 4.34e+01, 5.43e-01, 1.81e+03]    [1.64e+04, 4.34e+01, 5.43e-01, 1.81e+03]    []  
+1000      [1.51e+03, 4.56e+00, 2.89e+01, 2.69e+02]    [1.89e+03, 4.56e+00, 2.89e+01, 2.69e+02]    []  
+2000      [1.03e+03, 5.85e+00, 1.60e+01, 2.35e+02]    [1.28e+03, 5.85e+00, 1.60e+01, 2.35e+02]    []  
+3000      [6.60e+02, 4.80e+00, 9.65e+00, 2.18e+02]    [8.23e+02, 4.80e+00, 9.65e+00, 2.18e+02]    []  
+4000      [5.43e+02, 3.91e+00, 9.82e+00, 2.02e+02]    [6.80e+02, 3.91e+00, 9.82e+00, 2.02e+02]    []  
+5000      [4.54e+02, 2.54e+00, 3.63e+00, 1.89e+02]    [5.61e+02, 2.54e+00, 3.63e+00, 1.89e+02]    []  
+6000      [4.62e+02, 2.26e+00, 2.35e+01, 1.90e+02]    [5.56e+02, 2.26e+00, 2.35e+01, 1.90e+02]    []  
+7000      [5.26e+02, 1.89e+00, 1.07e+01, 1.89e+02]    [6.43e+02, 1.89e+00, 1.07e+01, 1.89e+02]    []  
+8000      [3.84e+02, 2.04e+00, 2.42e+01, 1.78e+02]    [4.57e+02, 2.04e+00, 2.42e+01, 1.78e+02]    []  
+9000      [4.66e+02, 2.18e+00, 1.46e+01, 1.80e+02]    [5.60e+02, 2.18e+00, 1.46e+01, 1.80e+02]    []  
+10000     [2.95e+02, 1.82e+00, 1.07e+01, 1.71e+02]    [3.41e+02, 1.82e+00, 1.07e+01, 1.71e+02]    []  
+11000     [5.49e+02, 2.09e+00, 6.73e+00, 1.82e+02]    [6.70e+02, 2.09e+00, 6.73e+00, 1.82e+02]    []  
+12000     [2.67e+02, 1.69e+00, 9.41e+00, 1.70e+02]    [3.05e+02, 1.69e+00, 9.41e+00, 1.70e+02]    []  
+13000     [2.87e+02, 1.67e+00, 7.15e+00, 1.70e+02]    [3.38e+02, 1.67e+00, 7.15e+00, 1.70e+02]    []  
+14000     [2.33e+02, 1.69e+00, 5.78e+00, 1.72e+02]    [2.59e+02, 1.69e+00, 5.78e+00, 1.72e+02]    []  
+15000     [2.77e+02, 1.31e+00, 1.06e+01, 1.68e+02]    [3.28e+02, 1.31e+00, 1.06e+01, 1.68e+02]    []  
+16000     [2.10e+02, 1.35e+00, 5.03e+00, 1.66e+02]    [2.41e+02, 1.35e+00, 5.03e+00, 1.66e+02]    []  
+17000     [2.11e+02, 1.35e+00, 1.07e+01, 1.65e+02]    [2.38e+02, 1.35e+00, 1.07e+01, 1.65e+02]    []  
+18000     [2.01e+02, 1.29e+00, 3.19e+01, 1.65e+02]    [2.22e+02, 1.29e+00, 3.19e+01, 1.65e+02]    []  
+19000     [1.87e+02, 1.43e+00, 2.51e+01, 1.67e+02]    [2.05e+02, 1.43e+00, 2.51e+01, 1.67e+02]    []  
+20000     [1.80e+02, 1.31e+00, 8.64e+00, 1.63e+02]    [2.03e+02, 1.31e+00, 8.64e+00, 1.63e+02]    []  
+21000     [1.61e+02, 1.24e+00, 2.07e+00, 1.63e+02]    [1.77e+02, 1.24e+00, 2.07e+00, 1.63e+02]    []  
+22000     [2.41e+02, 1.32e+00, 1.65e+01, 1.66e+02]    [2.80e+02, 1.32e+00, 1.65e+01, 1.66e+02]    []  
+23000     [1.45e+02, 1.10e+00, 3.37e+00, 1.60e+02]    [1.59e+02, 1.10e+00, 3.37e+00, 1.60e+02]    []  
+24000     [1.56e+02, 1.06e+00, 3.40e+00, 1.62e+02]    [1.76e+02, 1.06e+00, 3.40e+00, 1.62e+02]    []  
+25000     [1.71e+02, 1.16e+00, 1.10e+01, 1.61e+02]    [1.95e+02, 1.16e+00, 1.10e+01, 1.61e+02]    []  
+26000     [1.49e+02, 1.25e+00, 2.40e+01, 1.61e+02]    [1.61e+02, 1.25e+00, 2.40e+01, 1.61e+02]    []  
+27000     [1.27e+02, 1.05e+00, 1.66e+00, 1.60e+02]    [1.39e+02, 1.05e+00, 1.66e+00, 1.60e+02]    []  
+28000     [1.27e+02, 1.05e+00, 5.25e+00, 1.59e+02]    [1.43e+02, 1.05e+00, 5.25e+00, 1.59e+02]    []  
+29000     [1.55e+02, 1.07e+00, 2.09e+01, 1.60e+02]    [1.65e+02, 1.07e+00, 2.09e+01, 1.60e+02]    []  
+30000     [1.37e+02, 9.94e-01, 3.84e+00, 1.60e+02]    [1.42e+02, 9.94e-01, 3.84e+00, 1.60e+02]    []  
+31000     [1.11e+02, 1.12e+00, 9.37e+00, 1.59e+02]    [1.22e+02, 1.12e+00, 9.37e+00, 1.59e+02]    []  
+32000     [1.83e+02, 1.08e+00, 4.60e+00, 1.61e+02]    [2.14e+02, 1.08e+00, 4.60e+00, 1.61e+02]    []  
+33000     [1.31e+02, 1.07e+00, 2.05e+01, 1.60e+02]    [1.41e+02, 1.07e+00, 2.05e+01, 1.60e+02]    []  
+34000     [1.38e+02, 9.91e-01, 1.85e+00, 1.59e+02]    [1.47e+02, 9.91e-01, 1.85e+00, 1.59e+02]    []  
+35000     [1.80e+02, 1.04e+00, 3.16e+01, 1.60e+02]    [1.90e+02, 1.04e+00, 3.16e+01, 1.60e+02]    []  
+36000     [1.50e+02, 1.03e+00, 4.90e+00, 1.60e+02]    [1.74e+02, 1.03e+00, 4.90e+00, 1.60e+02]    []  
+37000     [1.35e+02, 1.13e+00, 2.31e+00, 1.62e+02]    [1.55e+02, 1.13e+00, 2.31e+00, 1.62e+02]    []  
+38000     [1.68e+02, 1.03e+00, 7.71e+00, 1.60e+02]    [1.91e+02, 1.03e+00, 7.71e+00, 1.60e+02]    []  
+39000     [9.93e+01, 1.00e+00, 1.02e+01, 1.58e+02]    [1.11e+02, 1.00e+00, 1.02e+01, 1.58e+02]    []  
+40000     [8.61e+01, 1.02e+00, 1.20e+01, 1.57e+02]    [9.22e+01, 1.02e+00, 1.20e+01, 1.57e+02]    []  
+
+Best model at step 40000:
+  train loss: 2.56e+02
+  test loss: 2.63e+02
+  test metric: []
+
+'train' took 27365.862765 s
+
+Compiling model...
+'compile' took 0.004511 s
+
+Training model...
+
+Step      Train loss                                  Test loss                                   Test metric
+40000     [8.62e+01, 1.02e+00, 1.20e+01, 1.57e+02]    [9.22e+01, 1.02e+00, 1.20e+01, 1.57e+02]    []  
+41000     [5.47e+01, 5.13e-01, 3.01e-01, 1.54e+02]    [6.69e+01, 5.13e-01, 3.01e-01, 1.54e+02]    []  
+
+Best model at step 41000:
+  train loss: 2.09e+02
+  test loss: 2.21e+02
+  test metric: []
+
+'train' took 1962.989725 s
+
+1996-08-22 00:00:00
+cycle 23 done -> results/cycle_23
+
+Summary: {
+  "23": {
+    "cycle_length_yr": 12.32,
+    "field_absmax_model_units": 17.28116798400879
+  }
+}
