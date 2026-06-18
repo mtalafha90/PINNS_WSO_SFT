@@ -12,15 +12,19 @@ Stage 2: leave-one-out analog hindcasts for cycles 21-24 (does the truth
 Stage 3: cycle-25 forecast = analogs {21,22,23,24} x lengths {10.5,11,11.5}
          x amplitude {0.85,1.0,1.15}.
 """
-import os, json, pickle
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import json, pickle
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import cycle_tools as ct
+from src import cycle_tools as ct
 
-OUT = "cycle_products"
-store = pickle.load(open(f"{OUT}/store.pkl", "rb"))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(HERE, "cycle_products")
+store = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 
 PHASE_TRUNC = 5.08 / 11.0
 NPHASE = 401
@@ -107,7 +111,7 @@ for ax, c in zip(axes.flat, COMPLETE):
     ax.axhline(0, color="gray", lw=0.5)
     ax.set_title(f"SC{c}: analog hindcasts after {t_tr:.1f} yr")
 plt.tight_layout()
-plt.savefig(f"{OUT}/hindcasts_analog.png", dpi=130)
+plt.savefig(os.path.join(OUT, "hindcasts_analog.png"), dpi=130)
 print(f"Envelope coverage: {cov}/4")
 
 # ----------------------------------------------------------------------
@@ -172,5 +176,5 @@ ax[1].legend(fontsize=8)
 ax[1].set_title("Axial dipole: observed + analog forecast")
 ax[1].set_xlabel("year")
 plt.tight_layout()
-plt.savefig(f"{OUT}/forecast_cycle25.png", dpi=130)
+plt.savefig(os.path.join(OUT, "forecast_cycle25.png"), dpi=130)
 print("\nFigures: hindcasts_analog.png, forecast_cycle25.png")

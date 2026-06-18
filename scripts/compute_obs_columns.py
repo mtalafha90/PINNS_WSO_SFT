@@ -11,6 +11,10 @@ RUN FROM THE REPO ROOT (where src/extract.py and data/<cycle>/ live):
 
 Then paste me the printed table and I'll drop the numbers into Table 2.
 """
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 import numpy as np
 from src.extract import get_wso_map_for_comparison   # project function
 

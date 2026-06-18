@@ -3,6 +3,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 from .utils import compute_lat_grid, compute_dipole_moment
 from .extract import get_wso_map_for_comparison
 
@@ -51,7 +53,7 @@ def _compute_net_flux(B_model, lat_deg, config):
 
     # Full-surface net flux:
     # Phi = 2*pi*R^2 * integral B(mu,t) dmu
-    Phi = 2.0 * np.pi * R**2 * np.trapz(B_phys, mu, axis=1)
+    Phi = 2.0 * np.pi * R**2 * _trapz(B_phys, mu, axis=1)
     return Phi
 
 

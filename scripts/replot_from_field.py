@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 #!/usr/bin/env python3
 """
 replot_from_field_gauss.py -- regenerate the per-cycle reconstruction figures
@@ -28,13 +31,13 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from src.extract import get_wso_map_for_comparison      # numpy/scipy only, no TF
 try:
-    import cycle_tools as ct                            # for the FD overlay
+    from src import cycle_tools as ct                   # for the FD overlay
     _HAVE_CT = True
 except Exception:
     _HAVE_CT = False
 
 # ---- pipeline constants (no need to import src.config / TensorFlow) ----
-HERE      = os.path.dirname(os.path.abspath(__file__))
+HERE      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 B_UNIT    = 10.0
 TO_GAUSS  = B_UNIT * 0.01            # model units -> TRUE Gauss (= 0.1)
 L_UNIT    = 6.95e10                  # solar radius [cm]

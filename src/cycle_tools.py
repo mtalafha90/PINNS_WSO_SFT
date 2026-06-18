@@ -65,32 +65,22 @@ def Lop(B):
 # ----------------------------------------------------------------------
 # Data loading (WSO -> mu grid, model units, monopole removed)
 # ----------------------------------------------------------------------
-def load_cycle(project_dir, cycle):
-    import sys
-    if project_dir not in sys.path:
-        sys.path.insert(0, project_dir)
-    cwd = os.getcwd()
-    os.chdir(project_dir)
-    try:
-        from src.extract import build_synoptic_map
-        days, lats_src, syn, _ = build_synoptic_map(f"data/{cycle}")
-    finally:
-        os.chdir(cwd)
+def load_cycle(cycle):
+    from src.extract import build_synoptic_map
+    days, lats_src, syn, _ = build_synoptic_map(f"data/{cycle}")
     idx = np.argsort(lats_src)
     lats_src = np.asarray(lats_src)[idx]
     syn = np.asarray(syn)[:, idx]
     t_obs = np.asarray(days, float) / 365.25
-    t_obs = t_obs - t_obs[0]   # rebase: ref_date/ref_rot in extract.py can
-                               # predate the first rotation in the directory
-                               # (cycle 21 is offset by ~2.2 yr otherwise)
+    t_obs = t_obs - t_obs[0]
 
     obs = np.empty((len(t_obs), N))
     for k, row in enumerate(syn):
         f = interp1d(lats_src, row, kind="cubic", bounds_error=False,
                      fill_value="extrapolate")
         p = f(LAT_DEG)
-        obs[k] = p - p.mean()          # zero net flux (uniform mu weights)
-    obs /= B_UNIT                       # model units
+        obs[k] = p - p.mean()
+    obs /= B_UNIT
     T_cycle = float(t_obs[-1])
     return t_obs, obs, T_cycle
 

@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 import random
 
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 def set_random_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
@@ -56,7 +58,7 @@ def compute_dipole_moment(B, lat_deg, config):
     mu = np.sin(np.deg2rad(lat_deg))  # monotonically increasing if lat_deg ascends
 
     # a1(t) = (3/2) ∫ B(μ,t) * μ dμ    (trapz over μ axis)
-    a1 = 1.5 * np.trapz(B_phys * mu[None, :], mu, axis=1)  # Gauss
+    a1 = 1.5 * _trapz(B_phys * mu[None, :], mu, axis=1)
 
     # M(t) = (R^3/2) * a1  → units: G·cm^3 = Mx·cm
     M = 0.5 * (float(config.L_unit) ** 3) * a1

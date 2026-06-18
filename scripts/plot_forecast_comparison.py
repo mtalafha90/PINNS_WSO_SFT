@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 #!/usr/bin/env python3
 """
 plot_forecast_comparison.py  (v2 -- band style, PINN-prominent)
@@ -19,9 +22,9 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import cycle_tools as ct
+from src import cycle_tools as ct
 
-HERE    = os.path.dirname(os.path.abspath(__file__))
+HERE    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT     = os.path.join(HERE, "cycle_products")
 RESULTS = os.path.join(HERE, "results")
 store   = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
