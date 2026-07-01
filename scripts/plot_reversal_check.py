@@ -73,8 +73,8 @@ for ax, c in zip(axes.flat, CYCLES):
     # just enough to suppress micro-oscillations near zero that cause spurious
     # intermediate crossings (e.g. SC24 north at ~5.28 yr) without erasing
     # the genuine brief positive excursion that delays the true last crossing.
-    pn_s = ct.smooth1d(pinn_n, k=3)
-    ps_s = ct.smooth1d(pinn_s, k=3)
+    pn_s = ct.smooth1d(pinn_n, k=2)
+    ps_s = ct.smooth1d(pinn_s, k=2)
 
     revN_obs  = ct.last_crossing(t_obs,  on_s)
     revS_obs  = ct.last_crossing(t_obs,  os_s)
