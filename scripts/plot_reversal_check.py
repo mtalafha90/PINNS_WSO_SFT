@@ -64,18 +64,22 @@ for ax, c in zip(axes.flat, CYCLES):
     # --- observed polar means (FD mu-grid) ---
     obs_n, obs_sd = ct.polar_means(obs * ct.B_UNIT)
 
-    # --- smooth obs before reversal detection (noisy WSO data) ---
+    # --- smooth before reversal detection ---
+    # Obs (noisy WSO): heavy smoothing k=9 (~0.75 yr window)
     on_s = ct.smooth1d(obs_n)
     os_s = ct.smooth1d(obs_sd)
 
-    # PINN output is already smooth (neural network); applying smooth1d again
-    # suppresses small but real sign excursions (e.g. SC24 north briefly goes
-    # positive after ~3.7 yr before the true final crossing at ~6 yr).
-    # Use the raw polar means directly for the PINN crossing detection.
+    # PINN (already smooth from the network): minimal k=3 smoothing only,
+    # just enough to suppress micro-oscillations near zero that cause spurious
+    # intermediate crossings (e.g. SC24 north at ~5.28 yr) without erasing
+    # the genuine brief positive excursion that delays the true last crossing.
+    pn_s = ct.smooth1d(pinn_n, k=3)
+    ps_s = ct.smooth1d(pinn_s, k=3)
+
     revN_obs  = ct.last_crossing(t_obs,  on_s)
     revS_obs  = ct.last_crossing(t_obs,  os_s)
-    revN_pinn = ct.last_crossing(t_pinn, pinn_n)
-    revS_pinn = ct.last_crossing(t_pinn, pinn_s)
+    revN_pinn = ct.last_crossing(t_pinn, pn_s)
+    revS_pinn = ct.last_crossing(t_pinn, ps_s)
 
     print(f"  {c:>2} | {_fmt(revN_obs):>8} {_fmt(revN_pinn):>9} | "
           f"{_fmt(revS_obs):>8} {_fmt(revS_pinn):>9}")
