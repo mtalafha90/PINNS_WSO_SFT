@@ -64,17 +64,18 @@ for ax, c in zip(axes.flat, CYCLES):
     # --- observed polar means (FD mu-grid) ---
     obs_n, obs_sd = ct.polar_means(obs * ct.B_UNIT)
 
-    # --- smooth identically before reversal detection ---
-    on_s  = ct.smooth1d(obs_n)
-    os_s  = ct.smooth1d(obs_sd)
-    pn_s  = ct.smooth1d(pinn_n)
-    ps_s  = ct.smooth1d(pinn_s)
+    # --- smooth obs before reversal detection (noisy WSO data) ---
+    on_s = ct.smooth1d(obs_n)
+    os_s = ct.smooth1d(obs_sd)
 
-    # --- last zero crossing = reversal time ---
+    # PINN output is already smooth (neural network); applying smooth1d again
+    # suppresses small but real sign excursions (e.g. SC24 north briefly goes
+    # positive after ~3.7 yr before the true final crossing at ~6 yr).
+    # Use the raw polar means directly for the PINN crossing detection.
     revN_obs  = ct.last_crossing(t_obs,  on_s)
     revS_obs  = ct.last_crossing(t_obs,  os_s)
-    revN_pinn = ct.last_crossing(t_pinn, pn_s)
-    revS_pinn = ct.last_crossing(t_pinn, ps_s)
+    revN_pinn = ct.last_crossing(t_pinn, pinn_n)
+    revS_pinn = ct.last_crossing(t_pinn, pinn_s)
 
     print(f"  {c:>2} | {_fmt(revN_obs):>8} {_fmt(revN_pinn):>9} | "
           f"{_fmt(revS_obs):>8} {_fmt(revS_pinn):>9}")
