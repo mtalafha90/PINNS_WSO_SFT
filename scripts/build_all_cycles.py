@@ -30,7 +30,11 @@ store = {}
 
 fig, axes = plt.subplots(len(cycles), 2, figsize=(14, 3.1 * len(cycles)))
 
-print(f"{'cyc':>4} {'T[yr]':>6} {'rotN':>5} | {'rev N obs':>9} {'rev N mod':>9} | "
+def _fmt(v):
+    return f"{v:.2f}" if v is not None else "none"
+
+print(f"{'cyc':>4} {'T[yr]':>6} {'rotN':>5} | "
+      f"{'revN obs':>8} {'revN mod':>8} | {'revS obs':>8} {'revS mod':>8} | "
       f"{'endN obs':>8} {'endN mod':>8} | {'endS obs':>8} {'endS mod':>8} | {'RMS':>5}")
 
 for r, c in enumerate(cycles):
@@ -46,25 +50,39 @@ for r, c in enumerate(cycles):
     obs_n, obs_sd = ct.polar_means(obs * ct.B_UNIT)
     mod_n, mod_sd = ct.polar_means(Bn)
 
-    on_s = ct.smooth1d(obs_n)
-    rev_obs = ct.last_crossing(t_obs, on_s)
-    rev_mod = ct.last_crossing(t_m, mod_n)
-    endN_o, endS_o = on_s[-6:].mean(), ct.smooth1d(obs_sd)[-6:].mean()
+    # smooth both obs and model identically before reversal detection so the
+    # last zero crossing is not biased by high-frequency noise in either series
+    on_s  = ct.smooth1d(obs_n)
+    os_s  = ct.smooth1d(obs_sd)
+    mn_s  = ct.smooth1d(mod_n)
+    ms_s  = ct.smooth1d(mod_sd)
+
+    revN_obs = ct.last_crossing(t_obs, on_s)
+    revS_obs = ct.last_crossing(t_obs, os_s)
+    revN_mod = ct.last_crossing(t_m,   mn_s)
+    revS_mod = ct.last_crossing(t_m,   ms_s)
+
+    endN_o, endS_o = on_s[-6:].mean(), os_s[-6:].mean()
     endN_m, endS_m = mod_n[-6:].mean(), mod_sd[-6:].mean()
     rms = np.sqrt(np.mean((np.interp(t_obs, t_m, mod_n) - obs_n) ** 2))
 
     store[c] = dict(t_obs=t_obs, obs=obs, T=T, t_u=t_u, obs_s=obs_s, S=S)
     print(f"{c:>4} {T:>6.2f} {len(t_obs):>5} | "
-          f"{(('%.2f' % rev_obs) if rev_obs else 'none'):>9} "
-          f"{(('%.2f' % rev_mod) if rev_mod else 'none'):>9} | "
+          f"{_fmt(revN_obs):>8} {_fmt(revN_mod):>8} | "
+          f"{_fmt(revS_obs):>8} {_fmt(revS_mod):>8} | "
           f"{endN_o:>8.1f} {endN_m:>8.1f} | {endS_o:>8.1f} {endS_m:>8.1f} | {rms:>5.1f}")
 
     ax = axes[r, 0]
-    ax.plot(t_obs, obs_n, "k", lw=0.8, alpha=0.6)
+    ax.plot(t_obs, obs_n, "k",  lw=0.8, alpha=0.6)
     ax.plot(t_obs, obs_sd, "k--", lw=0.8, alpha=0.6)
-    ax.plot(t_m, mod_n, "C1", lw=1.6, label="model N")
+    ax.plot(t_m, mod_n,  "C1",   lw=1.6, label="model N")
     ax.plot(t_m, mod_sd, "C3--", lw=1.6, label="model S")
     ax.axhline(0, color="gray", lw=0.5)
+    # mark last zero crossings so they can be visually verified
+    for tv, col, ls in [(revN_obs, "k",  "-"), (revS_obs, "k",  "--"),
+                        (revN_mod, "C1", "-"), (revS_mod, "C3", "--")]:
+        if tv is not None:
+            ax.axvline(tv, color=col, ls=ls, lw=0.8, alpha=0.6)
     ax.set_ylabel(f"SC{c}\npolar mean")
     if r == 0:
         ax.legend(fontsize=7)
