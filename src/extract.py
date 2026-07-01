@@ -86,23 +86,22 @@ def build_synoptic_map(data_dir="data/24", lat_points=360):
     lats_deg = np.arcsin(sinlats) * 180 / np.pi
     model_lats = np.linspace(-90, 90, lat_points)
 
-    # Reference Carrington rotation number and date
-    if data_dir =="data/25":
-        ref_rot = 2225  
-        ref_date = datetime.datetime(2019, 12, 10)  
-    if data_dir =="data/24":
-        ref_rot = 2078  
-        ref_date = datetime.datetime(2008, 12, 17) 
-    if data_dir =="data/23":
-        ref_rot = 1913  
-        ref_date = datetime.datetime(1996, 8, 22)  
-    if data_dir =="data/22":
-        ref_rot = 1780  
-        ref_date = datetime.datetime(1986, 9, 16)  
-    if data_dir =="data/21":
-        ref_rot = 1614 
-        ref_date = datetime.datetime(1974, 4, 24)  
-    print (ref_date)
+    # Reference Carrington rotation number and date.
+    # Match on the last path component so both relative ("data/24") and
+    # absolute paths work correctly.
+    _cycle_key = os.path.basename(os.path.normpath(data_dir))
+    _CYCLE_REF = {
+        "25": (2225, datetime.datetime(2019, 12, 10)),
+        "24": (2078, datetime.datetime(2008, 12, 17)),
+        "23": (1913, datetime.datetime(1996,  8, 22)),
+        "22": (1780, datetime.datetime(1986,  9, 16)),
+        "21": (1614, datetime.datetime(1974,  4, 24)),
+    }
+    if _cycle_key not in _CYCLE_REF:
+        raise ValueError(f"Unknown cycle data directory: {data_dir!r} "
+                         f"(basename {_cycle_key!r}). "
+                         f"Expected one of {list(_CYCLE_REF)}")
+    ref_rot, ref_date = _CYCLE_REF[_cycle_key]
     carrington_period_days = 27.2753
 
     for filepath in file_paths:

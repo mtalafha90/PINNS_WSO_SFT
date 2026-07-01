@@ -43,7 +43,7 @@ def plot_cycle(cycle):
     # WSO comparison on the same grid
     _, _, B_obs = get_wso_map_for_comparison(
         Tmax=1.0, lat_points=NUM_LATS, time_steps=NT_POINTS + 1,
-        B_unit=B_UNIT, data_dir=os.path.join(HERE, "data", str(cycle)))
+        B_unit=B_UNIT, data_dir=f"data/{cycle}")
 
     Nt  = min(B.shape[0], B_obs.shape[0])
     Nl  = min(B.shape[1], B_obs.shape[1])
