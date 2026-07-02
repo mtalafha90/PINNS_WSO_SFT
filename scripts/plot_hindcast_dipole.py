@@ -87,9 +87,14 @@ for ax, c in zip(axes.flat, COMPLETE):
     D_assim = dipole_G(obs[t_obs <= t_tr] * ct.B_UNIT)
     t_assim = t_obs[t_obs <= t_tr]
 
-    # full WSO dipole (actual)
+    # full WSO dipole for the "actual" curve (dashed gray)
     D_full  = dipole_G(obs * ct.B_UNIT)
-    D_end   = float(D_full[-6:].mean())   # actual end-of-cycle value
+
+    # D_end in forward-model convention: full-cycle FD run with the full source,
+    # same computation as the analogue members → star and envelope are comparable
+    t_full, B_full = ct.forward(store[c]["obs_s"][0], 0.0, T,
+                                store[c]["S"], store[c]["t_u"])
+    D_end = float(dipole_G(B_full * ct.B_UNIT)[-6:].mean())
 
     # analogue members
     member_D, member_t = [], []
