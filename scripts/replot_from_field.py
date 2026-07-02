@@ -98,7 +98,7 @@ def replot(cycle):
     x, y = Og[:,keep].ravel(), Bg[:,keep].ravel()
     lim = [min(x.min(),y.min()), max(x.max(),y.max())]
     plt.figure(figsize=(5.5,5.5)); plt.scatter(x, y, s=5, alpha=0.35)
-    plt.plot(lim, lim, "k--", lw=1.2); plt.xlabel(r"WSO $B_r$ [G]"); plt.ylabel(r"PINN $B_r$ [G]")
+    plt.plot(lim, lim, "k--", lw=1.2); plt.xlabel(r"$B_r^{\rm WSO}$ [G]"); plt.ylabel(r"$B_r^{\rm PINN}$ [G]")
     plt.title(f"Point-by-point, Cycle {cycle}"); plt.tight_layout()
     plt.savefig(os.path.join(out, "scatter_pinn_vs_wso.png"), dpi=300); plt.close()
 
@@ -122,9 +122,9 @@ def replot(cycle):
 
     # 6) flux balance [Mx] (B in Gauss)
     mu = np.sin(np.deg2rad(lat))
-    flux = 2*np.pi*L_UNIT**2 * np.trapezoid(Bg, mu, axis=1)
+    flux = 2*np.pi*L_UNIT**2 * np.trapezoid(Bg, mu, axis=1) / 1e20
     plt.figure(figsize=(7,3.8)); plt.plot(ty,flux); plt.axhline(0,ls="--",color="k",lw=1)
-    plt.xlabel("Time [yr]"); plt.ylabel("Net signed flux [Mx]"); plt.title(f"Flux balance, Cycle {cycle}")
+    plt.xlabel("Time [yr]"); plt.ylabel(r"Net signed flux [$10^{20}$ Mx]"); plt.title(f"Flux balance, Cycle {cycle}")
     plt.tight_layout(); plt.savefig(os.path.join(out,"flux_balance_check.png"),dpi=300); plt.close()
 
     # 7) FD-vs-PINN polar-cap overlay (needs cycle_tools + store.pkl)
