@@ -35,6 +35,38 @@ members below; drop config.iter_adam for a quick smoke test before the full run.
 """
 import os, json, pickle
 import numpy as np
+# --------------------------------------------------------------------------
+# NumPy pickle compatibility
+# --------------------------------------------------------------------------
+# Some store.pkl files created with NumPy 2.x contain references to
+# numpy._core.*.  NumPy 1.x does not expose this namespace, so unpickling
+# can fail with:
+#     ModuleNotFoundError: No module named 'numpy._core'
+#
+# These aliases allow old environments to load NumPy-2-created pickles.
+import sys
+import importlib
+
+try:
+    import numpy.core as _np_core
+    sys.modules.setdefault("numpy._core", _np_core)
+
+    for _name in [
+        "multiarray",
+        "numeric",
+        "umath",
+        "fromnumeric",
+        "shape_base",
+        "_multiarray_umath",
+    ]:
+        try:
+            _mod = importlib.import_module(f"numpy.core.{_name}")
+            sys.modules.setdefault(f"numpy._core.{_name}", _mod)
+        except Exception:
+            pass
+
+except Exception:
+    pass
 import deepxde as dde
 import tensorflow as tf
 from scipy.interpolate import interp1d
@@ -53,10 +85,16 @@ OUT   = os.path.join(HERE, "cycle_products")
 store = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 
 # ---- ensemble definition (each entry = one full PINN train) ----
-ANALOGS         = [21, 22, 23, 24]   # analog source for the future window
-T_FULL          = 11.0               # assumed full Cycle-25 length [yr]
-AMP             = 1.0                 # future-source amplitude factor
-ADD_ZERO_SOURCE = True               # pure transport+decay (lower envelope)
+ANALOGS = [21, 22, 23, 24]
+
+T_FULL_LIST = [10.5, 11.0, 11.5]
+AMP_LIST = [0.85, 1.0, 1.15]
+
+ADD_ZERO_SOURCE = False
+
+BLEND_YR = 0.75
+RECENT_SCALE_YR = 1.5
+EPS = 1e-12
 
 NPHASE = 401
 phase  = np.linspace(0.0, 1.0, NPHASE)
@@ -81,30 +119,78 @@ def amp_win(Sp, p0, p1):
 def build_member_source(analog, T_full, amp, path):
     t_obs, obs = store[25]["t_obs"], store[25]["obs"]
     T_data = float(t_obs[-1])
+
+    # Refit observed Cycle-25 source up to the data horizon
     t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T_data, nt=201)
-    S_obs = ct.refit_source(t_u, obs_s)                  # model units/yr, MU grid
-    m_tr = np.sqrt(np.mean(S_obs[:, BELT] ** 2))
+    S_obs = ct.refit_source(t_u, obs_s)  # model units/yr, mu-grid
 
     t_full = np.linspace(0.0, T_full, NPHASE)
     S_full = np.zeros((NPHASE, ct.N))
-    # observed window: real refit source
+
+    # Interpolate observed source onto the full time grid
+    S_obs_on_full = np.zeros_like(S_full)
     for j in range(ct.N):
-        S_full[:, j] = np.where(t_full <= T_data,
-                                interp1d(t_u, S_obs[:, j], bounds_error=False,
-                                         fill_value=0.0)(t_full), 0.0)
-    # future window: analog declining-phase source (skip for the zero member)
+        f_obs = interp1d(
+            t_u,
+            S_obs[:, j],
+            bounds_error=False,
+            fill_value=(S_obs[0, j], S_obs[-1, j]),
+        )
+        S_obs_on_full[:, j] = f_obs(t_full)
+
+    observed = t_full <= T_data
+    S_full[observed, :] = S_obs_on_full[observed, :]
+
+    # Mean source profile just before the data horizon
+    n_tail = min(8, len(S_obs))
+    S_horizon = np.mean(S_obs[-n_tail:, :], axis=0)
+
     if analog is not None:
         Sp = phase_source(analog) * (polarity(25) * polarity(analog))
-        p1 = T_data / T_full
-        Sp = Sp * (amp * m_tr / amp_win(Sp, 0.0, p1))
-        fut = t_full > T_data
-        ph = np.clip(t_full[fut] / T_full, 0.0, 1.0)
-        for jj, p in zip(np.where(fut)[0], ph):
-            f = p * (NPHASE - 1); i0 = int(np.floor(f)); w = f - i0
-            i1 = min(i0 + 1, NPHASE - 1)
-            S_full[jj, :] = (1 - w) * Sp[i0, :] + w * Sp[i1, :]
 
-    ct.save_source_for_pinn(S_full, path)   # -> native units/yr, 181 lam_norm grid
+        p1 = T_data / T_full
+
+        # Scale using only the recent observed source strength
+        t0_recent = max(0.0, T_data - RECENT_SCALE_YR)
+        recent = (t_u >= t0_recent) & (t_u <= T_data)
+
+        m_tr = np.sqrt(np.mean(S_obs[recent][:, BELT] ** 2))
+
+        p0_recent = max(0.0, t0_recent / T_full)
+        m_an = amp_win(Sp, p0_recent, p1)
+
+        Sp = Sp * (amp * m_tr / max(m_an, EPS))
+
+        # Interpolate analogue source onto Cycle-25 full time grid
+        S_analog_full = np.zeros_like(S_full)
+        ph_full = np.clip(t_full / T_full, 0.0, 1.0)
+
+        for j in range(ct.N):
+            S_analog_full[:, j] = np.interp(ph_full, phase, Sp[:, j])
+
+        # Smooth transition after data horizon
+        future = t_full > T_data
+        for jj in np.where(future)[0]:
+            dt = t_full[jj] - T_data
+
+            if dt < BLEND_YR:
+                w = 0.5 - 0.5 * np.cos(np.pi * dt / BLEND_YR)
+                S_full[jj, :] = (1.0 - w) * S_horizon + w * S_analog_full[jj, :]
+            else:
+                S_full[jj, :] = S_analog_full[jj, :]
+
+    else:
+        future = t_full > T_data
+        for jj in np.where(future)[0]:
+            dt = t_full[jj] - T_data
+
+            if dt < BLEND_YR:
+                w = 0.5 - 0.5 * np.cos(np.pi * dt / BLEND_YR)
+                S_full[jj, :] = (1.0 - w) * S_horizon
+            else:
+                S_full[jj, :] = 0.0
+
+    ct.save_source_for_pinn(S_full, path)
     return T_data
 
 # ---------- WSO point constraints with FIXED-T normalisation ----------
@@ -134,13 +220,14 @@ def wso_constraints_fixedT(wso_dir, T_full, B_unit, lat_points=181,
 
 # ---------- one PINN training (mirrors src/train.py) ----------
 def train_forecast_member(analog, T_full, amp, tag):
+    data25_dir = os.path.join(HERE, "data", "25")
     out_dir = os.path.join(HERE, "results", f"forecast_cycle25_mem_{tag}")
     os.makedirs(out_dir, exist_ok=True)
     src_path = os.path.join(OUT, f"fitted_source_map_cycle25_{tag}.npy")
     T_data = build_member_source(analog, T_full, amp, src_path)
 
     cfg = Config(mode="full", output_dir=out_dir)
-    cfg.wso_path = "data/25"
+    cfg.wso_path = data25_dir
     cfg.simul_time = float(T_full); cfg.SIMUL_TIME = float(T_full)
     cfg.T_unit = float(T_full) * 365.25 * 24 * 3600.0
     cfg.FITTED_SOURCE_FILE = src_path
@@ -149,7 +236,11 @@ def train_forecast_member(analog, T_full, amp, tag):
 
     # initial condition = first Cycle-25 synoptic map (model units)
     lat_init, init_prof = get_initial_profile_from_wso(
-        cfg.num_lats, cfg.B_unit, "data/25", getattr(cfg, "WSO_TO_GAUSS", 1.0))
+        cfg.num_lats,
+        cfg.B_unit,
+        data25_dir,
+        getattr(cfg, "WSO_TO_GAUSS", 1.0),
+    )
     sft_pde.initial_lats_deg = lat_init
     sft_pde.initial_profile_model = init_prof
 
@@ -167,8 +258,13 @@ def train_forecast_member(analog, T_full, amp, tag):
     pde = make_pde(cfg)   # loads the member source into a TF constant
 
     obs_X, obs_Y, t_now_norm = wso_constraints_fixedT(
-        "data/25", T_full, cfg.B_unit, cfg.num_lats,
-        getattr(cfg, "OBS_MAX_ABS_LAT_DEG", 75.0), getattr(cfg, "WSO_TO_GAUSS", 1.0))
+        data25_dir,
+        T_full,
+        cfg.B_unit,
+        cfg.num_lats,
+        getattr(cfg, "OBS_MAX_ABS_LAT_DEG", 75.0),
+        getattr(cfg, "WSO_TO_GAUSS", 1.0),
+    )
     print(f"[{tag}] WSO data confined to t_norm in [0, {t_now_norm:.3f}] "
           f"({obs_X.shape[0]} points); future source = "
           f"{'analog SC%d' % analog if analog is not None else 'ZERO'}, amp {amp}")
@@ -206,13 +302,27 @@ def train_forecast_member(analog, T_full, amp, tag):
     print(f"[{tag}] wrote {out_dir}/field.npy")
 
 def main():
-    members = [(a, T_FULL, AMP, f"SC{a}") for a in ANALOGS]
+    members = []
+
+    for analog in ANALOGS:
+        for T_full in T_FULL_LIST:
+            for amp in AMP_LIST:
+                tag = f"SC{analog}_T{T_full:.1f}_A{amp:.2f}"
+                tag = tag.replace(".", "p")
+                members.append((analog, T_full, amp, tag))
+
     if ADD_ZERO_SOURCE:
-        members.append((None, T_FULL, AMP, "zero"))
+        members.append((None, 11.0, 1.0, "zero"))
+
+    print(f"\nRunning {len(members)} Cycle-25 PINN forecast members.")
+    print("Main forecast ensemble should contain 36 members.")
+
     for analog, T_full, amp, tag in members:
         print(f"\n===== Cycle-25 PINN forecast member: {tag} =====")
         train_forecast_member(analog, T_full, amp, tag)
-    print("\nAll members done. Now run: python plot_forecast_comparison.py")
+
+    print("\nAll members done. Now run:")
+    print("python scripts/plot_forecast_comparison.py")
 
 if __name__ == "__main__":
     main()
