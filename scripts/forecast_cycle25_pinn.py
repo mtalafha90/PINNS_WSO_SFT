@@ -75,6 +75,15 @@ try:
 
 except Exception:
     pass
+
+# Silence TensorFlow's C++ INFO/WARNING startup messages (oneDNN notice,
+# "Could not find cuda drivers", cpu_feature_guard).  With --workers every
+# member spawn would repeat these lines on the console, because they are
+# printed during the child's TF import, before the per-member train.log
+# redirect takes effect.  Must be set before TF is imported; export
+# TF_CPP_MIN_LOG_LEVEL yourself to override.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import deepxde as dde
 import tensorflow as tf
 from scipy.interpolate import interp1d
