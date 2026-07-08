@@ -76,35 +76,16 @@ try:
 except Exception:
     pass
 
-# Silence TensorFlow's C++ INFO/WARNING startup messages (oneDNN notice,
-# "Could not find cuda drivers", cpu_feature_guard).  With --workers every
-# member spawn would repeat these lines on the console, because they are
-# printed during the child's TF import, before the per-member train.log
-# redirect takes effect.  Must be set before TF is imported; export
-# TF_CPP_MIN_LOG_LEVEL yourself to override.
+# TF_CPP_MIN_LOG_LEVEL no longer filters TensorFlow's absl startup messages
+# (oneDNN notice, cuda probing) in recent TF versions, so TensorFlow and
+# DeepXDE are deliberately NOT imported at module level.  They are imported
+# inside train_forecast_member(), which in parallel mode runs AFTER the
+# worker has redirected its stdout/stderr to train.log -- so the startup
+# spam lands in the member's log instead of on the console.
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-import deepxde as dde
-import tensorflow as tf
 from scipy.interpolate import interp1d
-
-# In parallel runs each worker process gets a CPU-thread budget (exported by
-# main() before spawning).  Apply it before any TF op / session exists.
-_thr = int(os.environ.get("TF_THREADS_PER_WORKER", "0"))
-if _thr > 0:
-    try:
-        tf.config.threading.set_intra_op_parallelism_threads(_thr)
-        tf.config.threading.set_inter_op_parallelism_threads(1)
-    except RuntimeError:
-        pass  # TF already initialised; the OMP/BLAS env caps still apply
-
-from src import sft_pde
-from src.sft_pde import init, make_pde
-from src.config import Config
-from src.extract import (build_synoptic_map, _remove_monopole_per_time,
-                         get_initial_profile_from_wso)
-from deepxde.icbc import PointSetBC
-from src import cycle_tools as ct
+from src import cycle_tools as ct   # numpy/scipy only, no TF
 
 # --------------------------------------------------------------------------
 HERE  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -223,6 +204,7 @@ def build_member_source(analog, T_full, amp, path):
 # ---------- WSO point constraints with FIXED-T normalisation ----------
 def wso_constraints_fixedT(wso_dir, T_full, B_unit, lat_points=181,
                            max_abs_lat_deg=75.0, wso_to_gauss=1.0):
+    from src.extract import build_synoptic_map, _remove_monopole_per_time
     days, lats_src, syn, _ = build_synoptic_map(wso_dir)
     idx = np.argsort(lats_src)
     lats_src = np.asarray(lats_src)[idx]
@@ -247,6 +229,28 @@ def wso_constraints_fixedT(wso_dir, T_full, B_unit, lat_points=181,
 
 # ---------- one PINN training (mirrors src/train.py) ----------
 def train_forecast_member(analog, T_full, amp, tag):
+    # TF/DeepXDE imported here rather than at module level: in parallel mode
+    # the worker has already redirected its output to train.log, so TF's C++
+    # startup messages (which ignore TF_CPP_MIN_LOG_LEVEL in recent versions)
+    # land in the log instead of on the console.
+    import deepxde as dde
+    import tensorflow as tf
+    from deepxde.icbc import PointSetBC
+    from src import sft_pde
+    from src.sft_pde import init, make_pde
+    from src.config import Config
+    from src.extract import get_initial_profile_from_wso
+
+    # per-worker CPU-thread budget (exported by main() before spawning);
+    # must be applied before any TF op / session exists
+    thr = int(os.environ.get("TF_THREADS_PER_WORKER", "0"))
+    if thr > 0:
+        try:
+            tf.config.threading.set_intra_op_parallelism_threads(thr)
+            tf.config.threading.set_inter_op_parallelism_threads(1)
+        except RuntimeError:
+            pass  # TF already initialised; the OMP/BLAS env caps still apply
+
     data25_dir = os.path.join(HERE, "data", "25")
     out_dir = os.path.join(HERE, "results", f"forecast_cycle25_mem_{tag}")
     os.makedirs(out_dir, exist_ok=True)
