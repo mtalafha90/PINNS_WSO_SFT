@@ -25,13 +25,21 @@ member) this:
      and member_meta.json (analog, T_full, amp, t_now).
 
 Run from the repo root (needs TensorFlow + DeepXDE):
-    python forecast_cycle25_pinn.py
+    python scripts/forecast_cycle25_pinn.py                       # serial
+    python scripts/forecast_cycle25_pinn.py --workers 6           # 6 members at a time
+    python scripts/forecast_cycle25_pinn.py --workers 6 --resume  # finish an interrupted run
 
 Then build the comparison figure:
-    python plot_forecast_comparison.py
+    python scripts/plot_forecast_comparison.py
 
-NOTE: each member is a full PINN training (Adam + L-BFGS). Start with the 5
-members below; drop config.iter_adam for a quick smoke test before the full run.
+NOTE: each member is a full PINN training (Adam + L-BFGS) and the grid below
+has 36 members, so use --workers on a multi-core machine.  Members are
+independent, so the speedup is ~linear in the number of workers; choose
+workers x threads-per-worker ~ physical cores (e.g. 8 cores ->
+--workers 4 --threads-per-worker 2).  In parallel mode each member writes
+its console output to results/forecast_cycle25_mem_<tag>/train.log and the
+workers are forced to CPU (export CUDA_VISIBLE_DEVICES yourself to override).
+Drop config.iter_adam for a quick smoke test before the full run.
 """
 import os, json, pickle
 import numpy as np
@@ -70,6 +78,16 @@ except Exception:
 import deepxde as dde
 import tensorflow as tf
 from scipy.interpolate import interp1d
+
+# In parallel runs each worker process gets a CPU-thread budget (exported by
+# main() before spawning).  Apply it before any TF op / session exists.
+_thr = int(os.environ.get("TF_THREADS_PER_WORKER", "0"))
+if _thr > 0:
+    try:
+        tf.config.threading.set_intra_op_parallelism_threads(_thr)
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+    except RuntimeError:
+        pass  # TF already initialised; the OMP/BLAS env caps still apply
 
 from src import sft_pde
 from src.sft_pde import init, make_pde
@@ -301,28 +319,101 @@ def train_forecast_member(analog, T_full, amp, tag):
               open(os.path.join(out_dir, "member_meta.json"), "w"), indent=2)
     print(f"[{tag}] wrote {out_dir}/field.npy")
 
-def main():
-    members = []
+def _run_member(job):
+    """Train one ensemble member.  Returns (tag, None) or (tag, traceback str)."""
+    analog, T_full, amp, tag, log_to_file = job
+    out_dir = os.path.join(HERE, "results", f"forecast_cycle25_mem_{tag}")
+    os.makedirs(out_dir, exist_ok=True)
+    if log_to_file:
+        # parallel run: send this member's (very verbose) TF/DeepXDE output to
+        # its own file so the console only shows the start/done lines
+        log = open(os.path.join(out_dir, "train.log"), "w", buffering=1)
+        os.dup2(log.fileno(), 1)
+        os.dup2(log.fileno(), 2)
+    try:
+        print(f"\n===== Cycle-25 PINN forecast member: {tag} =====", flush=True)
+        train_forecast_member(analog, T_full, amp, tag)
+        return tag, None
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return tag, traceback.format_exc()
 
+
+def main():
+    import argparse
+    import multiprocessing as mp
+
+    parser = argparse.ArgumentParser(
+        description="Cycle-25 PINN analog-ensemble forecast (36 members)")
+    parser.add_argument("--workers", type=int, default=1,
+                        help="members trained in parallel, each in its own process "
+                             "(rule of thumb: workers x threads-per-worker ~ physical cores)")
+    parser.add_argument("--threads-per-worker", type=int, default=2,
+                        help="CPU threads each worker may use (default 2)")
+    parser.add_argument("--resume", action="store_true",
+                        help="skip members whose field.npy already exists")
+    args = parser.parse_args()
+
+    members = []
     for analog in ANALOGS:
         for T_full in T_FULL_LIST:
             for amp in AMP_LIST:
-                tag = f"SC{analog}_T{T_full:.1f}_A{amp:.2f}"
-                tag = tag.replace(".", "p")
+                tag = f"SC{analog}_T{T_full:.1f}_A{amp:.2f}".replace(".", "p")
                 members.append((analog, T_full, amp, tag))
 
     if ADD_ZERO_SOURCE:
         members.append((None, 11.0, 1.0, "zero"))
 
-    print(f"\nRunning {len(members)} Cycle-25 PINN forecast members.")
-    print("Main forecast ensemble should contain 36 members.")
+    if args.resume:
+        done = [m for m in members if os.path.exists(
+            os.path.join(HERE, "results", f"forecast_cycle25_mem_{m[3]}", "field.npy"))]
+        members = [m for m in members if m not in done]
+        print(f"--resume: {len(done)} members already have field.npy, "
+              f"{len(members)} left to train.")
 
-    for analog, T_full, amp, tag in members:
-        print(f"\n===== Cycle-25 PINN forecast member: {tag} =====")
-        train_forecast_member(analog, T_full, amp, tag)
+    print(f"\nRunning {len(members)} Cycle-25 PINN forecast members "
+          f"with {args.workers} worker(s).")
 
-    print("\nAll members done. Now run:")
-    print("python scripts/plot_forecast_comparison.py")
+    failures = []
+    if args.workers <= 1:
+        for job in members:
+            tag, err = _run_member(job + (False,))
+            if err:
+                failures.append(tag)
+    else:
+        # Cap each worker's CPU threads.  These must be in the environment
+        # BEFORE the children import numpy/TF, so set them here and use the
+        # 'spawn' start method (children re-import this module cleanly;
+        # forking a process that has already initialised TF is unsafe).
+        thr = str(args.threads_per_worker)
+        os.environ.setdefault("OMP_NUM_THREADS", thr)
+        os.environ.setdefault("OPENBLAS_NUM_THREADS", thr)
+        os.environ.setdefault("MKL_NUM_THREADS", thr)
+        os.environ["TF_THREADS_PER_WORKER"] = thr
+        # several workers sharing one GPU would fight over its memory ->
+        # default the workers to CPU (export CUDA_VISIBLE_DEVICES to override)
+        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+
+        ctx = mp.get_context("spawn")
+        jobs = [job + (True,) for job in members]
+        # maxtasksperchild=1 -> a fresh process (fresh TF graph) per member,
+        # so memory does not accumulate across trainings
+        with ctx.Pool(processes=args.workers, maxtasksperchild=1) as pool:
+            for tag, err in pool.imap_unordered(_run_member, jobs):
+                if err:
+                    failures.append(tag)
+                    print(f"[FAILED] {tag} -- see results/forecast_cycle25_mem_{tag}/train.log",
+                          flush=True)
+                else:
+                    print(f"[done]   {tag}", flush=True)
+
+    if failures:
+        print(f"\n{len(failures)} member(s) failed: {', '.join(failures)}")
+        print("Fix and rerun with --resume to train only the missing members.")
+    else:
+        print("\nAll members done. Now run:")
+        print("python scripts/plot_forecast_comparison.py")
 
 if __name__ == "__main__":
     main()
