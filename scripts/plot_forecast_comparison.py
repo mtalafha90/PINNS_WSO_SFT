@@ -62,7 +62,15 @@ def build_fd_ensemble():
     t_obs, obs = store[25]["t_obs"], store[25]["obs"]
     T_data = float(t_obs[-1])
     t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T_data, nt=201)
-    m_tr = np.sqrt(np.mean(ct.refit_source(t_u, obs_s)[:, BELT] ** 2))
+    S_fit = ct.refit_source(t_u, obs_s)
+    m_tr = np.sqrt(np.mean(S_fit[:, BELT] ** 2))
+
+    # Hindcast: FD from t=0 to T_data with the fitted SC25 source (same for all members)
+    t_hc, B_hc = ct.forward(obs_s[0], 0.0, T_data, S_fit, t_u, nt_out=80)
+    N_hc, S_hc = caps_G(B_hc, ct.LAT_DEG)
+    D_hc = dipole_G(B_hc, ct.LAT_DEG)
+    t_hc_yr = YR0 + t_hc
+
     members = []
     for a in COMPLETE:
         Sp0 = phase_source(a) * (polarity(25) * polarity(a))
@@ -72,7 +80,13 @@ def build_fd_ensemble():
                 sc = f * m_tr / amp_win(Sp0, 0.0, p1)
                 t_m, B = ct.forward(obs_s[-1], T_data, T25, Sp0 * sc, phase * T25, nt_out=160)
                 N, S = caps_G(B, ct.LAT_DEG)
-                members.append(dict(t=YR0 + t_m, N=N, S=S, D=dipole_G(B, ct.LAT_DEG)))
+                # Concatenate hindcast + forecast, dropping the duplicate T_data point
+                members.append(dict(
+                    t=np.concatenate([t_hc_yr, YR0 + t_m[1:]]),
+                    N=np.concatenate([N_hc, N[1:]]),
+                    S=np.concatenate([S_hc, S[1:]]),
+                    D=np.concatenate([D_hc, dipole_G(B, ct.LAT_DEG)[1:]])
+                ))
     return members, T_data
 
 # ---------------- PINN ensemble ----------------
