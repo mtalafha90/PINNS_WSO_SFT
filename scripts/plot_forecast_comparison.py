@@ -227,6 +227,7 @@ if pinn:
         a1.plot(m["t"], m["D"], C_PI, alpha=0.30, lw=1.0)
 a1.plot(t_obs25, obsD, "k", lw=1.5, label="WSO dipole")
 a1.axvline(t_now, color="gray", ls=":", lw=1.2)
+a1.text(t_now, a1.get_ylim()[1], " data horizon", va="top", ha="left", fontsize=8, color="gray")
 a1.axhline(0, color="gray", lw=0.5)
 a1.set_xlabel("year"); a1.set_ylabel("axial dipole $D$ [G]")
 a1.set_title("Cycle 25 axial dipole: PINN vs finite-volume")
