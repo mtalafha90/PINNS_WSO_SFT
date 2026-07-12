@@ -31,6 +31,13 @@ store   = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 
 YR0      = 2019.94
 TO_GAUSS = 0.1
+# Drop the last ~6 WSO rotations before forecasting: the final maps (late
+# 2024/early 2025) carry a strong annual b-angle artifact (the N-cap average
+# plunges from -0.27 to -0.68 G within 4 rotations) plus a large uncancelled
+# low-latitude flux imbalance.  Used as the forecast initial condition, that
+# tail flips the polar caps back to the old polarity by ~2027; trimming it
+# restores a physical decline (verified against zero-source relaxation runs).
+TRIM_YR  = 0.5
 NPHASE   = 401
 phase    = np.linspace(0.0, 1.0, NPHASE)
 BELT     = np.abs(ct.LAT_DEG) < 50.0
@@ -60,8 +67,10 @@ def amp_win(Sp, p0, p1):
 
 def build_fd_ensemble():
     t_obs, obs = store[25]["t_obs"], store[25]["obs"]
-    T_data = float(t_obs[-1])
-    t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T_data, nt=201)
+    T_data = float(t_obs[-1]) - TRIM_YR
+    m_tr_mask = t_obs <= T_data
+    t_u, obs_s = ct.smooth_on_uniform_time(t_obs[m_tr_mask], obs[m_tr_mask],
+                                           T_data, nt=201)
     S_fit = ct.refit_source(t_u, obs_s)
     m_tr = np.sqrt(np.mean(S_fit[:, BELT] ** 2))
 
@@ -90,19 +99,29 @@ def build_fd_ensemble():
     return members, T_data
 
 # ---------------- PINN ensemble ----------------
-def build_pinn_ensemble():
-    members, tags = [], []
+def build_pinn_ensemble(T_data_ref=None):
+    members, tags, stale = [], [], []
     for d in sorted(glob.glob(os.path.join(RESULTS, "forecast_cycle25_mem_*"))):
         fp, mp = os.path.join(d, "field.npy"), os.path.join(d, "member_meta.json")
         if not (os.path.exists(fp) and os.path.exists(mp)):
             continue
-        meta = json.load(open(mp)); B = np.load(fp)
+        meta = json.load(open(mp))
+        # skip members trained with a different data horizon (e.g. before a
+        # TRIM_YR change) -- mixing horizons silently corrupts the ensemble
+        if T_data_ref is not None and \
+                abs(float(meta.get("T_data", T_data_ref)) - T_data_ref) > 0.1:
+            stale.append(os.path.basename(d).replace("forecast_cycle25_mem_", ""))
+            continue
+        B = np.load(fp)
         lat_deg = np.array(meta["lat_deg"]) if "lat_deg" in meta \
             else np.linspace(-89.1, 89.1, B.shape[1])
         t = YR0 + np.linspace(0.0, float(meta["T_full"]), B.shape[0])
         N, S = caps_G(B, lat_deg)
         members.append(dict(t=t, N=N, S=S, D=dipole_G(B, lat_deg)))
         tags.append(os.path.basename(d).replace("forecast_cycle25_mem_", ""))
+    if stale:
+        print(f"WARNING: skipped {len(stale)} stale PINN member(s) trained with a "
+              f"different data horizon (delete or retrain them): {stale}")
     return members, tags
 
 def band(members, key, t_grid):
@@ -115,7 +134,7 @@ def band(members, key, t_grid):
 
 # ---------------- assemble ----------------
 fd, T_data = build_fd_ensemble()
-pinn, pinn_tags = build_pinn_ensemble()
+pinn, pinn_tags = build_pinn_ensemble(T_data_ref=T_data)
 t_now = YR0 + T_data
 print(f"FD ensemble : {len(fd)} members")
 print(f"PINN ensemble: {len(pinn)} members" + (f"  -> {pinn_tags}" if pinn else
