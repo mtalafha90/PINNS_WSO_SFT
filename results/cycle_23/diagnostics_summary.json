@@ -1,0 +1,22 @@
+{
+  "reversal_time_north_yr": 3.107025254345191,
+  "reversal_time_south_yr": 4.177796511545266,
+  "mean_hemispheric_reversal_time_yr": 3.642410882945229,
+  "peak_north_polar_field_G": 104.09354400634766,
+  "peak_south_polar_field_G": 102.6043930053711,
+  "peak_signed_polar_mean_G": 37.138206481933594,
+  "peak_unsigned_polar_mean_G": 97.98404693603516,
+  "time_peak_north_polar_field_yr": 0.0,
+  "time_peak_south_polar_field_yr": 0.4675,
+  "time_peak_signed_polar_mean_yr": 4.015,
+  "time_peak_unsigned_polar_mean_yr": 0.4675,
+  "dipole_max_abs_1e22": 893203059274.713,
+  "dipole_time_max_abs_yr": 0.0,
+  "dipole_min_1e22": -735010419640.2084,
+  "dipole_time_min_yr": 5.5275,
+  "dipole_max_1e22": 893203059274.713,
+  "dipole_time_max_yr": 0.0,
+  "hemisphere_asymmetry_mean_G": -72.8271713256836,
+  "hemisphere_asymmetry_max_abs_G": 130.94960021972656,
+  "hemisphere_asymmetry_time_max_abs_yr": 8.91
+}
