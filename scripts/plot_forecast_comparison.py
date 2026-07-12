@@ -38,18 +38,9 @@ COMPLETE = [21, 22, 23, 24]
 FD_LENGTHS, FD_AMPS = [10.5, 11.0, 11.5], [0.85, 1.0, 1.15]
 C_FD, C_PI = "#d1751b", "#1f6fb2"      # FD = orange, PINN = blue
 
-# Polar-cap band [deg] for this figure; 60..90 matches ct.polar_means and the
-# rest of the paper.  Alternatives tried: 75..90 (pole-most, but obs there are
-# pure cubic extrapolation -- WSO measures only to ~75 deg) and 60..75 (the
-# measured band).  Both still show the post-horizon transient, just shifted
-# in time, since it is transported flux passing through whatever band is used.
-CAP_LO, CAP_HI = 60.0, 90.0
-
 def caps_G(B_model, lat_deg):
-    n = (lat_deg >= CAP_LO) & (lat_deg <= CAP_HI)
-    s = (lat_deg <= -CAP_LO) & (lat_deg >= -CAP_HI)
-    return (B_model[:, n].mean(1) * TO_GAUSS,
-            B_model[:, s].mean(1) * TO_GAUSS)
+    return (B_model[:, lat_deg >= 60.0].mean(1) * TO_GAUSS,
+            B_model[:, lat_deg <= -60.0].mean(1) * TO_GAUSS)
 
 def dipole_G(B_model, lat_deg):
     mu = np.sin(np.deg2rad(lat_deg)); o = np.argsort(mu)
