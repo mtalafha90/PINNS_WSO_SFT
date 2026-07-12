@@ -31,6 +31,17 @@ store   = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 
 YR0      = 2019.94
 TO_GAUSS = 0.1
+# Forecast initial state = mean assimilated state over the final
+# IC_ANNUAL_MEAN_YR years instead of the endpoint state (0 -> endpoint).
+# The WSO polar-cap signal carries an annual polar-visibility (b-angle)
+# modulation, and the final rotations leave a spurious low-latitude flux
+# imbalance in the endpoint state; transported poleward it flips the polar
+# caps back to the old polarity around 2027.  Averaging the state over one
+# full modulation period removes the artifact without changing the data,
+# the fitted source, or the trained members: because the SFT operator is
+# linear, the same correction is applied to the PINN members by subtracting
+# a single zero-source run of the IC difference profile.
+IC_ANNUAL_MEAN_YR = 1.0
 NPHASE   = 401
 phase    = np.linspace(0.0, 1.0, NPHASE)
 BELT     = np.abs(ct.LAT_DEG) < 50.0
@@ -71,6 +82,12 @@ def build_fd_ensemble():
     D_hc = dipole_G(B_hc, ct.LAT_DEG)
     t_hc_yr = YR0 + t_hc
 
+    # forecast initial state: annual-mean assimilated state (see IC_ANNUAL_MEAN_YR)
+    if IC_ANNUAL_MEAN_YR > 0:
+        ic0 = obs_s[t_u >= T_data - IC_ANNUAL_MEAN_YR].mean(0)
+    else:
+        ic0 = obs_s[-1]
+
     members = []
     for a in COMPLETE:
         Sp0 = phase_source(a) * (polarity(25) * polarity(a))
@@ -78,7 +95,7 @@ def build_fd_ensemble():
             p1 = T_data / T25
             for f in FD_AMPS:
                 sc = f * m_tr / amp_win(Sp0, 0.0, p1)
-                t_m, B = ct.forward(obs_s[-1], T_data, T25, Sp0 * sc, phase * T25, nt_out=160)
+                t_m, B = ct.forward(ic0, T_data, T25, Sp0 * sc, phase * T25, nt_out=160)
                 N, S = caps_G(B, ct.LAT_DEG)
                 # Concatenate hindcast + forecast, dropping the duplicate T_data point
                 members.append(dict(
@@ -87,10 +104,21 @@ def build_fd_ensemble():
                     S=np.concatenate([S_hc, S[1:]]),
                     D=np.concatenate([D_hc, dipole_G(B, ct.LAT_DEG)[1:]])
                 ))
-    return members, T_data
+    return members, T_data, ic0
+
+def ic_transient(dIC, T_data, t_end):
+    """Zero-source FD run of the IC difference profile.  By linearity of the
+    SFT operator, subtracting its caps/dipole series from a member is exactly
+    equivalent to having started that member from the corrected initial
+    state -- this is how the correction is applied to the PINN members,
+    which cannot be re-initialised at plot time."""
+    t_c, B_c = ct.forward(dIC, T_data, t_end, np.zeros((NPHASE, ct.N)),
+                          np.linspace(T_data, t_end, NPHASE), nt_out=200)
+    N_c, S_c = caps_G(B_c, ct.LAT_DEG)
+    return t_c, N_c, S_c, dipole_G(B_c, ct.LAT_DEG)
 
 # ---------------- PINN ensemble ----------------
-def build_pinn_ensemble(T_data_ref=None):
+def build_pinn_ensemble(T_data_ref=None, ic0=None):
     members, tags, stale = [], [], []
     for d in sorted(glob.glob(os.path.join(RESULTS, "forecast_cycle25_mem_*"))):
         fp, mp = os.path.join(d, "field.npy"), os.path.join(d, "member_meta.json")
@@ -108,7 +136,23 @@ def build_pinn_ensemble(T_data_ref=None):
             else np.linspace(-89.1, 89.1, B.shape[1])
         t = YR0 + np.linspace(0.0, float(meta["T_full"]), B.shape[0])
         N, S = caps_G(B, lat_deg)
-        members.append(dict(t=t, N=N, S=S, D=dipole_G(B, lat_deg)))
+        D = dipole_G(B, lat_deg)
+        if ic0 is not None:
+            # Re-initialise this member from the annual-mean state: subtract
+            # the zero-source transient of (member's own horizon profile -
+            # ic0).  By linearity of the SFT operator this equals having
+            # started the member from ic0, and also cancels the member's own
+            # imprint of the artifact-affected final maps.
+            t_rel = t - YR0
+            prof = np.array([np.interp(T_data_ref, t_rel, B[:, k])
+                             for k in range(B.shape[1])])
+            dIC_m = np.interp(ct.LAT_DEG, lat_deg, prof) - ic0
+            t_c, dN, dS, dD = ic_transient(dIC_m, T_data_ref, float(t_rel[-1]))
+            f = t_rel >= T_data_ref
+            N[f] -= np.interp(t_rel[f], t_c, dN)
+            S[f] -= np.interp(t_rel[f], t_c, dS)
+            D[f] -= np.interp(t_rel[f], t_c, dD)
+        members.append(dict(t=t, N=N, S=S, D=D))
         tags.append(os.path.basename(d).replace("forecast_cycle25_mem_", ""))
     if stale:
         print(f"WARNING: skipped {len(stale)} stale PINN member(s) trained with a "
@@ -134,8 +178,9 @@ def band(members, key, t_grid):
         return (np.nanpercentile(M, 10, 0), np.nanmedian(M, 0), np.nanpercentile(M, 90, 0))
 
 # ---------------- assemble ----------------
-fd, T_data = build_fd_ensemble()
-pinn, pinn_tags = build_pinn_ensemble(T_data_ref=T_data)
+fd, T_data, ic0 = build_fd_ensemble()
+pinn, pinn_tags = build_pinn_ensemble(
+    T_data_ref=T_data, ic0=ic0 if IC_ANNUAL_MEAN_YR > 0 else None)
 t_now = YR0 + T_data
 print(f"FD ensemble : {len(fd)} members")
 print(f"PINN ensemble: {len(pinn)} members" + (f"  -> {pinn_tags}" if pinn else
