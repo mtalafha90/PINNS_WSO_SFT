@@ -31,13 +31,6 @@ store   = pickle.load(open(os.path.join(OUT, "store.pkl"), "rb"))
 
 YR0      = 2019.94
 TO_GAUSS = 0.1
-# Drop the last ~6 WSO rotations before forecasting: the final maps (late
-# 2024/early 2025) carry a strong annual b-angle artifact (the N-cap average
-# plunges from -0.27 to -0.68 G within 4 rotations) plus a large uncancelled
-# low-latitude flux imbalance.  Used as the forecast initial condition, that
-# tail flips the polar caps back to the old polarity by ~2027; trimming it
-# restores a physical decline (verified against zero-source relaxation runs).
-TRIM_YR  = 0.5
 NPHASE   = 401
 phase    = np.linspace(0.0, 1.0, NPHASE)
 BELT     = np.abs(ct.LAT_DEG) < 50.0
@@ -67,10 +60,8 @@ def amp_win(Sp, p0, p1):
 
 def build_fd_ensemble():
     t_obs, obs = store[25]["t_obs"], store[25]["obs"]
-    T_data = float(t_obs[-1]) - TRIM_YR
-    m_tr_mask = t_obs <= T_data
-    t_u, obs_s = ct.smooth_on_uniform_time(t_obs[m_tr_mask], obs[m_tr_mask],
-                                           T_data, nt=201)
+    T_data = float(t_obs[-1])
+    t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T_data, nt=201)
     S_fit = ct.refit_source(t_u, obs_s)
     m_tr = np.sqrt(np.mean(S_fit[:, BELT] ** 2))
 
@@ -122,6 +113,16 @@ def build_pinn_ensemble(T_data_ref=None):
     if stale:
         print(f"WARNING: skipped {len(stale)} stale PINN member(s) trained with a "
               f"different data horizon (delete or retrain them): {stale}")
+    # If members from the old 5-member run (tags without "_T": SC21..SC24,
+    # zero) coexist with the T x amp grid, keep only the grid -- the old
+    # members use a different source construction and would bias the band.
+    new_style = [i for i, tg in enumerate(tags) if "_T" in tg]
+    if new_style and len(new_style) < len(tags):
+        dropped = [tg for tg in tags if "_T" not in tg]
+        print(f"WARNING: ignoring {len(dropped)} member(s) from the old 5-member "
+              f"run mixed in with the ensemble grid: {dropped}")
+        members = [members[i] for i in new_style]
+        tags = [tags[i] for i in new_style]
     return members, tags
 
 def band(members, key, t_grid):

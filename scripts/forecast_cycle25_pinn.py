@@ -104,13 +104,6 @@ BLEND_YR = 0.75
 RECENT_SCALE_YR = 1.5
 EPS = 1e-12
 
-# Drop the last ~6 WSO rotations before forecasting: the final maps (late
-# 2024/early 2025) carry a strong annual b-angle artifact in the polar-cap
-# average plus a large uncancelled low-latitude flux imbalance.  Used as the
-# forecast initial state, that tail flips the polar caps back to the old
-# polarity by ~2027; trimming it restores a physical decline.
-TRIM_YR = 0.5
-
 NPHASE = 401
 phase  = np.linspace(0.0, 1.0, NPHASE)
 BELT   = np.abs(ct.LAT_DEG) < 50.0
@@ -133,11 +126,10 @@ def amp_win(Sp, p0, p1):
 # ---------- full-window source for one member (saved in PINN .npy format) ----------
 def build_member_source(analog, T_full, amp, path):
     t_obs, obs = store[25]["t_obs"], store[25]["obs"]
-    T_data = float(t_obs[-1]) - TRIM_YR
-    m_obs = t_obs <= T_data
+    T_data = float(t_obs[-1])
 
-    # Refit observed Cycle-25 source up to the (trimmed) data horizon
-    t_u, obs_s = ct.smooth_on_uniform_time(t_obs[m_obs], obs[m_obs], T_data, nt=201)
+    # Refit observed Cycle-25 source up to the data horizon
+    t_u, obs_s = ct.smooth_on_uniform_time(t_obs, obs, T_data, nt=201)
     S_obs = ct.refit_source(t_u, obs_s)  # model units/yr, mu-grid
 
     t_full = np.linspace(0.0, T_full, NPHASE)
@@ -211,8 +203,7 @@ def build_member_source(analog, T_full, amp, path):
 
 # ---------- WSO point constraints with FIXED-T normalisation ----------
 def wso_constraints_fixedT(wso_dir, T_full, B_unit, lat_points=181,
-                           max_abs_lat_deg=75.0, wso_to_gauss=1.0,
-                           max_t_yr=None):
+                           max_abs_lat_deg=75.0, wso_to_gauss=1.0):
     from src.extract import build_synoptic_map, _remove_monopole_per_time
     days, lats_src, syn, _ = build_synoptic_map(wso_dir)
     idx = np.argsort(lats_src)
@@ -227,11 +218,6 @@ def wso_constraints_fixedT(wso_dir, T_full, B_unit, lat_points=181,
     M = _remove_monopole_per_time(M, model_lats)
     t_years = np.asarray(days, float) / 365.25
     t_years = t_years - t_years.min()
-    if max_t_yr is not None:
-        # exclude the trimmed tail so the PINN is not forced to reproduce it
-        keep_t = t_years <= float(max_t_yr) + 1e-9
-        t_years = t_years[keep_t]
-        M = M[keep_t]
     t_norm = t_years / float(T_full)              # <-- THE FIX (data lands in [0, T_data/T_full])
     lam_norm = model_lats / 180.0
     keep = np.where(np.abs(model_lats) <= float(max_abs_lat_deg))[0]
@@ -309,7 +295,6 @@ def train_forecast_member(analog, T_full, amp, tag):
         cfg.num_lats,
         getattr(cfg, "OBS_MAX_ABS_LAT_DEG", 75.0),
         getattr(cfg, "WSO_TO_GAUSS", 1.0),
-        max_t_yr=T_data,
     )
     print(f"[{tag}] WSO data confined to t_norm in [0, {t_now_norm:.3f}] "
           f"({obs_X.shape[0]} points); future source = "
