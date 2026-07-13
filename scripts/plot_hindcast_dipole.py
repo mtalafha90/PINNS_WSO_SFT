@@ -55,19 +55,31 @@ def amp_win(Sp, p0, p1):
     return np.sqrt(np.mean(Sp[np.ix_(m, BELT)] ** 2))
 
 
+# Averaging window (yr) for the launch state; 0 -> endpoint state.
+# The hindcasts keep the endpoint state, unlike the Cycle-25 forecast
+# (plot_forecast_comparison.py, annual mean): a source-free relaxation test
+# shows the truncation states of cycles 21-24 are clean, and averaging them
+# only adds a half-year lag bias that weakens the envelopes.
+IC_ANNUAL_MEAN_YR = 0.0
+
+
 def truncated_refit(c, t_tr):
     t_obs, obs = store[c]["t_obs"], store[c]["obs"]
     m = t_obs <= t_tr
     t_u, obs_s = ct.smooth_on_uniform_time(t_obs[m], obs[m], t_tr, nt=201)
-    return t_u, obs_s, ct.refit_source(t_u, obs_s)
+    if IC_ANNUAL_MEAN_YR > 0:
+        ic0 = obs_s[t_u >= t_tr - IC_ANNUAL_MEAN_YR].mean(0)
+    else:
+        ic0 = obs_s[-1]
+    return t_u, obs_s, ct.refit_source(t_u, obs_s), ic0
 
 
-def analogue_member(target, analogue, T, t_u, obs_s, S_tr):
+def analogue_member(target, analogue, T, t_u, ic0, S_tr):
     Sp  = phase_source(analogue) * (polarity(target) * polarity(analogue))
     p1  = t_u[-1] / T
     m_tr = np.sqrt(np.mean(S_tr[:, BELT] ** 2))
     sc  = m_tr / amp_win(Sp, 0.0, p1)
-    t_m, B = ct.forward(obs_s[-1], t_u[-1], T, Sp * sc, phase * T, nt_out=160)
+    t_m, B = ct.forward(ic0, t_u[-1], T, Sp * sc, phase * T, nt_out=160)
     return t_m, B * ct.B_UNIT
 
 
@@ -81,7 +93,7 @@ for ax, c in zip(axes.flat, COMPLETE):
     t_obs = store[c]["t_obs"]
     obs   = store[c]["obs"]
 
-    t_u, obs_s, S_tr = truncated_refit(c, t_tr)
+    t_u, obs_s, S_tr, ic0 = truncated_refit(c, t_tr)
 
     # assimilated WSO dipole (up to truncation)
     D_assim = dipole_G(obs[t_obs <= t_tr] * ct.B_UNIT)
@@ -101,7 +113,7 @@ for ax, c in zip(axes.flat, COMPLETE):
     for a in COMPLETE:
         if a == c:
             continue
-        t_m, Bn = analogue_member(c, a, T, t_u, obs_s, S_tr)
+        t_m, Bn = analogue_member(c, a, T, t_u, ic0, S_tr)
         D_m = dipole_G(Bn)
         member_t.append(t_m)
         member_D.append(D_m)
