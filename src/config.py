@@ -67,7 +67,7 @@ class Config:
 
         self.lr = 0.0022
 
-        # Loss weights: [PDE, Neumann BC, IC, WSO data]
+        # Loss weights: [PDE, IC, Neumann BC, WSO data]
         # With the corrected PDE the raw residual is O(1), so the physics
         # weight no longer needs to be crushed to 1e-8. Start here and tune;
         # if the WSO term dominates everything, lower 100 -> 30; if the
